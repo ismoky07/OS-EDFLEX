@@ -351,18 +351,25 @@ The Learning Assistant provides intelligent, context-aware conversational suppor
 
 ### 🏗️ Application Architecture
 
-#### 📡 Streamlit Interface
-- **Learner Profiling**: Interface for behavior analysis and profile viewing
-- **Content Recommendations**: Interface for getting personalized recommendations
-- **Learning Assistant**: Chat interface for conversational support
+#### 📡 React + Flask Architecture
+- **Frontend**: React TypeScript application with 3 dedicated pages
+  - **Learner Profiler Page**: Behavior analysis and profile visualization with cards
+  - **Path Recommender Page**: Content recommendations with rich visualizations
+  - **Learning Assistant Page**: Conversational chat interface with context cards
+- **Backend**: Flask API serving AI agents through REST endpoints
+  - **CORS Enabled**: Allows frontend-backend communication
+  - **JSON Responses**: Structured data for frontend parsing
+  - **Agent Initialization**: All 3 agents loaded on startup
 
 #### 🔄 Processing Flow
-1. **📨 User Input**: Learners interact through Streamlit interface
-2. **🎯 Agent Selection**: System routes to appropriate specialized agent
-3. **📊 Data Access**: Agents access learner profiles and content database
-4. **🔍 Analysis Execution**: Comprehensive analysis using AI models
-5. **📋 Response Generation**: Personalized responses and recommendations
-6. **📤 Response Delivery**: Results displayed in user-friendly format
+1. **📨 User Input**: Learners interact through React interface (forms, chat)
+2. **🌐 HTTP Request**: Axios sends POST request to Flask API (timeout: 120s)
+3. **🎯 Agent Selection**: Flask routes to appropriate specialized agent endpoint
+4. **📊 Data Access**: Agents access learner profiles and content database
+5. **🔍 Analysis Execution**: Comprehensive analysis using xAI Grok-3 models
+6. **📋 Response Generation**: Personalized responses and recommendations
+7. **📤 JSON Response**: Flask returns structured JSON to frontend
+8. **🎨 Visual Rendering**: React parses JSON and renders Option 1 card visualizations
 
 ## 💡 Usage Examples
 
@@ -535,45 +542,102 @@ MEMORY_ENABLED=true
 
 ## 🔗 Integration with Main Application
 
-### 🚀 Streamlit Integration
-The PersonalisedLearningModule is deployed as a standalone Streamlit application with:
-- **Three-Tab Interface**: Separate tabs for Profiler, Recommender, and Assistant
-- **Agent Initialization**: All 3 agents loaded on application startup
-- **Session State Management**: User sessions maintained across interactions
-- **Real-Time Processing**: Immediate agent responses to user requests
+### 🚀 React + Flask Integration
+The PersonalisedLearningModule is deployed as a modern web application with:
+- **Frontend**: React TypeScript SPA with React Router v6
+  - **Three Pages**: Dedicated routes for Profiler (/), Recommender (/recommender), and Assistant (/assistant)
+  - **Card-Based UI**: Option 1 visualization with colorful sections, progress bars, and badges
+  - **Responsive Design**: Mobile-first with CSS Grid and Flexbox
+  - **Loading States**: 120-second timeout with informative loading messages
+- **Backend**: Flask REST API with CORS enabled
+  - **Agent Initialization**: All 3 agents loaded on server startup
+  - **JSON API**: Structured responses for frontend consumption
+  - **Real-Time Processing**: Asynchronous agent execution (30-60 seconds per request)
 
 ### ⚙️ Module Initialization
 ```python
-# In app.py
-def initialize_agents():
-    learner_profiler = create_learner_profiler_agent()
-    path_recommender = create_path_recommender_agent()
-    learning_assistant = create_learning_assistant_agent()
+# In backend/api.py
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from PersonalisedLearning import (
+    create_learner_profiler_agent,
+    create_path_recommender_agent,
+    create_learning_assistant_agent
+)
 
-    return {
-        'profiler': learner_profiler,
-        'recommender': path_recommender,
-        'assistant': learning_assistant
-    }
+app = Flask(__name__)
+CORS(app)  # Enable CORS for React frontend
+
+# Initialize agents on startup
+learner_profiler = create_learner_profiler_agent()
+path_recommender = create_path_recommender_agent()
+learning_assistant = create_learning_assistant_agent()
+
+@app.route('/api/profiler', methods=['POST'])
+def profiler():
+    data = request.json
+    user_id = data.get('user_id')
+    action = data.get('action')
+    response = learner_profiler.run(f"Action: {action} for user_id: {user_id}")
+    return jsonify({'success': True, 'user_id': user_id, 'action': action, 'result': response.content})
 ```
 
-### 📡 Usage Examples
+### 📡 API Usage Examples
+
+#### Frontend (React TypeScript)
+```typescript
+// Learner Profiler Request
+const response = await axios.post('http://localhost:5000/api/profiler', {
+  user_id: 'U123',
+  action: 'analyze_behavior'
+}, { timeout: 120000 });
+
+// Path Recommender Request
+const response = await axios.post('http://localhost:5000/api/recommender', {
+  user_id: 'U123',
+  action: 'recommend_content',
+  goal: 'Become a Data Analyst'
+}, { timeout: 120000 });
+
+// Learning Assistant Request
+const response = await axios.post('http://localhost:5000/api/assistant', {
+  user_id: 'U123',
+  question: 'What is machine learning?'
+}, { timeout: 120000 });
+```
+
+#### Backend (Python)
 ```python
-# Learner Profiling
-user_id = "U123"
-action = "Analyser le comportement d'apprentissage"
-response = profiler.run(f"Analyser le comportement pour user_id: {user_id}")
-
-# Content Recommendation
-user_id = "U123"
-action = "Recommander du contenu personnalisé"
-response = recommender.run(f"Recommander du contenu pour user_id: {user_id}")
-
-# Learning Assistance
-user_id = "U123"
-question = "Qu'est-ce que le machine learning?"
-response = assistant.run(f"User {user_id} demande: {question}")
+# Agent responses are returned as JSON
+{
+  "success": True,
+  "user_id": "U123",
+  "action": "analyze_behavior",
+  "result": "Learner profile analysis with JSON/Python dict data..."
+}
 ```
+
+### 🎨 Frontend Visualization (Option 1)
+
+The React frontend parses agent responses and renders beautiful card-based visualizations:
+
+**ProfilerResults Component:**
+- Parses natural language and JSON data from agent responses
+- Extracts metrics using regex (e.g., `Visual: 85/100`)
+- Renders progress bars with animated gradients
+- Displays skill gaps as colored badges (high priority = warning, medium = info)
+
+**RecommenderResults Component:**
+- Parses Python dict strings and converts to JSON
+- Identifies user profile, recommendations array, and context objects
+- Renders user preference cards with icons
+- Displays recommendation cards with rank badges, difficulty colors, skill tags, and engagement predictions
+
+**AssistantResults Component:**
+- Extracts user profile JSON from response text
+- Parses assistant's natural language response
+- Renders profile summary cards (role, progress, stats, preferences, engagement)
+- Displays assistant response with formatted paragraphs and green highlighting
 
 ## ✅ Best Practices and Considerations
 
